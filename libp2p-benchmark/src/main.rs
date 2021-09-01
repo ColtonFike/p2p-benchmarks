@@ -4,7 +4,8 @@ use libp2p::{
     floodsub::{self, Floodsub, FloodsubEvent},
     identity,
     mdns::{Mdns, MdnsConfig, MdnsEvent},
-    swarm::{NetworkBehaviourEventProcess, SwarmEvent}, NetworkBehaviour, PeerId, Swarm,
+    swarm::{NetworkBehaviourEventProcess, SwarmEvent},
+    NetworkBehaviour, PeerId, Swarm,
 };
 use std::{
     error::Error,
@@ -25,9 +26,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let floodsub_topic = floodsub::Topic::new("one-to-all");
 
     let args: Vec<String> = std::env::args().collect();
-    let leader: bool = if args[1].parse::<i32>()? == 1 { true } else { false };
+    let leader: bool = if args[1].parse::<i32>()? == 1 {
+        true
+    } else {
+        false
+    };
     let nodes: i32 = args[2].parse::<i32>()?;
-    println!("{}",nodes);
+    println!("{}", nodes);
     const SIZE: usize = 500;
 
     #[derive(NetworkBehaviour)]
@@ -68,7 +73,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     self.iterations += 1;
                     self.sum += self.now.elapsed().as_micros();
                     println!("Average time: {}", self.sum as f64 / self.iterations as f64);
-                    self.count = 0;
+                    self.count = 1;
                     self.now = Instant::now();
                     self.floodsub.publish(ota, self.payload);
                 }
@@ -112,7 +117,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         behaviour.floodsub.subscribe(floodsub_topic.clone());
 
         if behaviour.leader {
-            behaviour.floodsub.subscribe(floodsub::Topic::new("all-to-one"));
+            behaviour
+                .floodsub
+                .subscribe(floodsub::Topic::new("all-to-one"));
         }
         Swarm::new(transport, behaviour, local_peer_id)
     };
@@ -126,11 +133,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             match stdin.try_poll_next_unpin(cx)? {
                 Poll::Ready(Some(line)) => {
                     swarm
-                    .behaviour_mut()
-                    .floodsub
-                    .publish(floodsub_topic.clone(), line.as_bytes());
+                        .behaviour_mut()
+                        .floodsub
+                        .publish(floodsub_topic.clone(), line.as_bytes());
                     swarm.behaviour_mut().now = Instant::now();
-                },
+                }
                 Poll::Ready(None) => break,
                 Poll::Pending => break,
             }

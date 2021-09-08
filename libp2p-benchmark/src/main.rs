@@ -56,6 +56,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         sum: u128,
         #[behaviour(ignore)]
         iterations: i32,
+        #[behaviour(ignore)]
+        nodes_found: i32,
     }
 
     impl NetworkBehaviourEventProcess<FloodsubEvent> for MyBehaviour {
@@ -72,9 +74,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 if self.leader && self.count >= self.nodes {
                     self.iterations += 1;
                     self.sum += self.now.elapsed().as_micros();
-                    println!("Average time: {}", self.sum as f64 / self.iterations as f64);
+                    println!("Iteration: {} | Average time: {}", self.iterations, self.sum as f64 / self.iterations as f64);
                     self.count = 1;
                     self.now = Instant::now();
+                    if self.iterations == 10000 {
+                        println!("Average time: {}", self.sum as f64 / self.iterations as f64);
+                        std::process::exit(0);
+                    }
                     self.floodsub.publish(ota, self.payload);
                 }
             }
@@ -86,6 +92,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             match event {
                 MdnsEvent::Discovered(list) => {
                     for (peer, _) in list {
+                        self.nodes_found += 1;
+                        if self.nodes_found == self.nodes - 1 {
+                            println!("Ready");
+                        }
                         self.floodsub.add_node_to_partial_view(peer);
                     }
                 }
@@ -113,6 +123,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             nodes: nodes,
             sum: 0,
             iterations: 0,
+            nodes_found: 0,
         };
         behaviour.floodsub.subscribe(floodsub_topic.clone());
 
